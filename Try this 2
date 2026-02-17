@@ -1,0 +1,44 @@
+function saveEmailToSheet() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1");
+  var threads = GmailApp.search('to:newsletter@sowhatelse.org is:unread');
+
+  threads.forEach(function(thread) {
+    var messages = thread.getMessages();
+
+    messages.forEach(function(message) {
+      try {
+        var body = message.getPlainBody();
+
+        // Normalize line endings to \n
+        body = body.replace(/\r\n/g, "\n");
+
+        var forwardStart = body.indexOf("Begin forwarded message:\n\nFrom: ");
+        if (forwardStart !== -1) {
+          var fromLineStart = forwardStart + "Begin forwarded message:\n\nFrom: ".length;
+          
+          // Find end of line safely
+          var fromLineEnd = body.indexOf("\n", fromLineStart);
+          if (fromLineEnd === -1) {
+            fromLineEnd = body.length; // if no newline, take until end
+          }
+
+          var fromLine = body.substring(fromLineStart, fromLineEnd).trim();
+
+          var parts = fromLine.split(" ");
+          if (parts.length >= 2) { // Ensure at least first name + email
+            var firstName = parts[0];
+            var lastName = parts.slice(1, parts.length - 1).join(" ");
+            var email = parts[parts.length - 1];
+
+            sheet.appendRow([firstName, lastName, email, new Date()]);
+          }
+        }
+
+        message.markRead();
+
+      } catch (e) {
+        Logger.log("Error processing email: " + e);
+      }
+    });
+  });
+}
