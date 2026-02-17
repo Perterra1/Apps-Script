@@ -1,0 +1,35 @@
+function saveEmailToSheet() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1");
+  
+  // Search for unread emails sent to newsletter@sowhatelse.org
+  var threads = GmailApp.search('to:newsletter@sowhatelse.org is:unread');
+
+  threads.forEach(function(thread) {
+    var messages = thread.getMessages();
+    
+    messages.forEach(function(message) {
+      var body = message.getPlainBody();
+      
+      // Look for the "Begin forwarded message:\n\nFrom: " line
+      var forwardStart = body.indexOf("Begin forwarded message:\n\nFrom: ");
+      if (forwardStart !== -1) {
+        // Get the rest of the line after "From: "
+        var fromLineStart = forwardStart + "Begin forwarded message:\n\nFrom: ".length;
+        var fromLineEnd = body.indexOf("\n", fromLineStart);
+        var fromLine = body.substring(fromLineStart, fromLineEnd).trim();
+        
+        // Split the line into parts: FirstName LastName Email
+        var parts = fromLine.split(" ");
+        var firstName = parts[0];
+        var lastName = parts.slice(1, parts.length - 1).join(" "); // in case last name has spaces
+        var email = parts[parts.length - 1];
+        
+        // Append to sheet
+        sheet.appendRow([firstName, lastName, email, new Date()]);
+      }
+      
+      // Mark email as read
+      message.markRead();
+    });
+  });
+}
