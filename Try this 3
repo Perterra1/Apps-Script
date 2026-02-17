@@ -1,0 +1,65 @@
+function saveEmailToSheet() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Contacts Sheet");
+  if (!sheet) {
+    Logger.log("Sheet 'Contacts Sheet' not found!");
+    return;
+  }
+
+  // Get unread emails sent to newsletter@sowhatelse.org
+  var threads = GmailApp.search('to:newsletter@sowhatelse.org is:unread');
+
+  threads.forEach(function(thread) {
+    var messages = thread.getMessages();
+
+    messages.forEach(function(message) {
+      try {
+        // Use plain text for simplicity
+        var body = message.getPlainBody();
+
+        // Normalize line endings
+        body = body.replace(/\r\n/g, "\n");
+
+        // Look for the forwarded message line
+        var searchString = "Begin forwarded message:\n\nFrom: ";
+        var forwardStart = body.indexOf(searchString);
+
+        if (forwardStart !== -1) {
+          var fromLineStart = forwardStart + searchString.length;
+          var fromLineEnd = body.indexOf("\n", fromLineStart);
+          if (fromLineEnd === -1) {
+            fromLineEnd = body.length; // take until end if no newline
+          }
+
+          var fromLine = body.substring(fromLineStart, fromLineEnd).trim();
+
+          // Split by spaces, assume last part is email, rest is name (optional)
+          var parts = fromLine.split(" ");
+          var email = parts.length > 0 ? parts[parts.length - 1] : "";
+          var firstName = "";
+          var lastName = "";
+
+          if (parts.length > 1) {
+            // Name exists
+            firstName = parts[0];
+            if (parts.length > 2) {
+              lastName = parts.slice(1, parts.length - 1).join(" ");
+            } else {
+              lastName = ""; // only first name present
+            }
+          }
+
+          // Only append if we have a valid email
+          if (email) {
+            sheet.appendRow([firstName, lastName, email, new Date()]);
+          }
+        }
+
+        // Mark the email as read to avoid re-processing
+        message.markRead();
+
+      } catch (e) {
+        Logger.log("Error processing email: " + e);
+      }
+    });
+  });
+}
