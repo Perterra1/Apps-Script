@@ -1,0 +1,39 @@
+// 1 this one worked, but got the wrong email
+
+function saveEmailToSheet() {
+  // Replace with your sheet name
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1");
+  
+  // Search for unread emails in inbox with specific criteria
+  var threads = GmailApp.search('to:test@gmail.com is:unread');
+  
+  threads.forEach(function(thread) {
+    var messages = thread.getMessages();
+    
+    messages.forEach(function(message) {
+      var from = message.getFrom(); // e.g., "John Doe <john.doe@example.com>"
+      
+      // Extract name and email
+      var emailMatch = from.match(/<(.+)>/);
+      var email = emailMatch ? emailMatch[1] : from;
+      var name = from.replace(/<.*>/, '').trim();
+      
+      var firstName = '';
+      var lastName = '';
+      
+      if (name.includes(' ')) {
+        var nameParts = name.split(' ');
+        firstName = nameParts[0];
+        lastName = nameParts.slice(1).join(' ');
+      } else {
+        firstName = name;
+      }
+      
+      // Append row to sheet
+      sheet.appendRow([firstName, lastName, email, new Date()]);
+      
+      // Mark email as read (optional)
+      message.markRead();
+    });
+  });
+}
